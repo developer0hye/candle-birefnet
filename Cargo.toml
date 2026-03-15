@@ -17,3 +17,5 @@ candle-swin = { git = "https://github.com/developer0hye/candle-swin.git" }
 [dev-dependencies]
 anyhow = "1"
 safetensors = "0.5"
+image = "0.25"
+hf-hub = "0.4"

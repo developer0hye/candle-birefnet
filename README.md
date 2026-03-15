@@ -6,13 +6,23 @@ Pure Rust, no custom kernels — works on all Candle backends (CPU, CUDA, Metal,
 
 ## Results
 
-Example outputs using [BiRefNet official pretrained weights](https://huggingface.co/ZhengPeng7/BiRefNet) (Input | Mask | Composite):
+PyTorch (left) vs **Candle/Rust** (right) using [`ZhengPeng7/BiRefNet`](https://huggingface.co/ZhengPeng7/BiRefNet) pretrained weights at **384x384** resolution.
 
-![Helicopter](examples/helicopter_result.png)
+Each panel shows: Input | Segmentation Mask | Composite
 
-![Windmill](examples/windmill_result.png)
+**Helicopter**
 
-*Sample images from [BiRefNet demo](https://huggingface.co/spaces/ZhengPeng7/BiRefNet_demo).*
+| PyTorch | Candle (Rust) |
+|---------|---------------|
+| ![PyTorch](examples/helicopter_result_pytorch.png) | ![Candle](examples/helicopter_result_candle.png) |
+
+**Windmill**
+
+| PyTorch | Candle (Rust) |
+|---------|---------------|
+| ![PyTorch](examples/windmill_result_pytorch.png) | ![Candle](examples/windmill_result_candle.png) |
+
+*Sample images from [BiRefNet demo](https://huggingface.co/spaces/ZhengPeng7/BiRefNet_demo). Model: Swin-V1-Large backbone, default config.*
 
 ## Architecture
 
@@ -22,14 +32,20 @@ Depends on:
 - [candle-swin](https://github.com/developer0hye/candle-swin) — Swin Transformer V1 backbone
 - [candle-dcnv2](https://github.com/developer0hye/candle-dcnv2) — Deformable Convolution V2
 
-## Usage
+## Quick Start
+
+```bash
+# Run inference on an image (downloads model automatically from HuggingFace)
+cargo run --example inference --release -- --image your_image.jpg --size 384
+```
+
+### As a library
 
 ```rust
 use candle_core::{Device, DType, Tensor};
 use candle_nn::VarBuilder;
 use candle_birefnet::BiRefNet;
 
-// Load pretrained weights from safetensors
 let device = &Device::Cpu;
 let vb = unsafe {
     VarBuilder::from_mmaped_safetensors(&["model.safetensors"], DType::F32, device)?
@@ -37,10 +53,9 @@ let vb = unsafe {
 
 let model = BiRefNet::new(vb)?;
 
-// Input: [B, 3, H, W] normalized RGB image
-let input = Tensor::randn(0f32, 1.0, (1, 3, 1024, 1024), device)?;
+// Input: [B, 3, H, W] ImageNet-normalized RGB tensor
 let outputs = model.forward(&input)?;
-// outputs[0]: [B, 1, H, W] segmentation mask
+// outputs[0]: [B, 1, H, W] segmentation logits (apply sigmoid for mask)
 ```
 
 ## Validation
