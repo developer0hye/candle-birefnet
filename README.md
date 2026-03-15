@@ -4,6 +4,16 @@
 
 Pure Rust, no custom kernels — works on all Candle backends (CPU, CUDA, Metal, WASM).
 
+## Results
+
+Example outputs using [BiRefNet official pretrained weights](https://huggingface.co/ZhengPeng7/BiRefNet) (Input | Mask | Composite):
+
+![Helicopter](examples/helicopter_result.png)
+
+![Windmill](examples/windmill_result.png)
+
+*Sample images from [BiRefNet demo](https://huggingface.co/spaces/ZhengPeng7/BiRefNet_demo).*
+
 ## Architecture
 
 Default configuration: Swin-V1-Large backbone + ASPPDeformable decoder.
