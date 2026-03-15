@@ -1,0 +1,19 @@
+[package]
+name = "candle-birefnet"
+version = "0.1.0"
+edition = "2024"
+description = "BiRefNet (Bilateral Reference Network) inference for Hugging Face Candle"
+license = "Apache-2.0"
+repository = "https://github.com/developer0hye/candle-birefnet"
+keywords = ["deep-learning", "image-segmentation", "background-removal", "candle", "birefnet"]
+categories = ["science"]
+
+[dependencies]
+candle-core = "0.9"
+candle-nn = "0.9"
+candle-dcnv2 = { git = "https://github.com/developer0hye/candle-dcnv2.git" }
+candle-swin = { git = "https://github.com/developer0hye/candle-swin.git" }
+
+[dev-dependencies]
+anyhow = "1"
+safetensors = "0.5"
