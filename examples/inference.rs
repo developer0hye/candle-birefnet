@@ -26,8 +26,7 @@ fn load_and_preprocess(path: &str, size: (u32, u32)) -> Result<(Tensor, RgbImage
         for x in 0..w {
             let pixel = rgb.get_pixel(x as u32, y as u32);
             for c in 0..3 {
-                data[c * h * w + y * w + x] =
-                    (pixel[c] as f32 / 255.0 - mean[c]) / std[c];
+                data[c * h * w + y * w + x] = (pixel[c] as f32 / 255.0 - mean[c]) / std[c];
             }
         }
     }
@@ -120,9 +119,7 @@ fn main() -> Result<()> {
     let model_path = repo.get("model.safetensors")?;
 
     let device = &Device::Cpu;
-    let vb = unsafe {
-        VarBuilder::from_mmaped_safetensors(&[model_path], DType::F32, device)?
-    };
+    let vb = unsafe { VarBuilder::from_mmaped_safetensors(&[model_path], DType::F32, device)? };
     let model = BiRefNet::new(vb)?;
 
     // Preprocess

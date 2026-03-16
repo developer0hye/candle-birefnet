@@ -9,10 +9,16 @@ keywords = ["deep-learning", "image-segmentation", "background-removal", "candle
 categories = ["science"]
 
 [dependencies]
-candle-core = "0.9"
-candle-nn = "0.9"
+# Using forked candle with conv2d_tiled bug fix (https://github.com/huggingface/candle/issues/3404)
+# TODO: Switch back to crates.io candle once the fix is merged upstream
+candle-core = { git = "https://github.com/developer0hye/candle.git", branch = "fix/conv2d-tiled-bug" }
+candle-nn = { git = "https://github.com/developer0hye/candle.git", branch = "fix/conv2d-tiled-bug" }
 candle-dcnv2 = { git = "https://github.com/developer0hye/candle-dcnv2.git" }
 candle-swin = { git = "https://github.com/developer0hye/candle-swin.git" }
+
+[patch.crates-io]
+candle-core = { git = "https://github.com/developer0hye/candle.git", branch = "fix/conv2d-tiled-bug" }
+candle-nn = { git = "https://github.com/developer0hye/candle.git", branch = "fix/conv2d-tiled-bug" }
 
 [dev-dependencies]
 anyhow = "1"

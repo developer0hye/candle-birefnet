@@ -106,6 +106,16 @@ impl SimpleConvs {
         let x: Tensor = self.conv1.forward(x)?;
         self.conv_out.forward(&x)
     }
+
+    /// Access conv1 weight for debugging.
+    pub fn conv1_weight(&self) -> Result<Tensor> {
+        Ok(self.conv1.weight().clone())
+    }
+
+    /// Access conv_out weight for debugging.
+    pub fn conv_out_weight(&self) -> Result<Tensor> {
+        Ok(self.conv_out.weight().clone())
+    }
 }
 
 /// Gradient-attention module used in decoder when `out_ref=True`.

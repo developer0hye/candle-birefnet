@@ -6,23 +6,25 @@ Pure Rust, no custom kernels — works on all Candle backends (CPU, CUDA, Metal,
 
 ## Results
 
-PyTorch (left) vs **Candle/Rust** (right) using [`ZhengPeng7/BiRefNet`](https://huggingface.co/ZhengPeng7/BiRefNet) pretrained weights at **384x384** resolution.
+PyTorch (left) vs **Candle/Rust** (right) using [`ZhengPeng7/BiRefNet`](https://huggingface.co/ZhengPeng7/BiRefNet) pretrained weights. Each panel shows: Input | Segmentation Mask | Composite.
 
-Each panel shows: Input | Segmentation Mask | Composite
+Model: Swin-V1-Large backbone, default config.
 
-**Helicopter**
+### 1024x1024
+
+| PyTorch | Candle (Rust) |
+|---------|---------------|
+| ![PyTorch](examples/helicopter_result_pytorch_1024.png) | ![Candle](examples/helicopter_result_candle_1024.png) |
+| ![PyTorch](examples/windmill_result_pytorch_1024.png) | ![Candle](examples/windmill_result_candle_1024.png) |
+
+### 384x384
 
 | PyTorch | Candle (Rust) |
 |---------|---------------|
 | ![PyTorch](examples/helicopter_result_pytorch.png) | ![Candle](examples/helicopter_result_candle.png) |
-
-**Windmill**
-
-| PyTorch | Candle (Rust) |
-|---------|---------------|
 | ![PyTorch](examples/windmill_result_pytorch.png) | ![Candle](examples/windmill_result_candle.png) |
 
-*Sample images from [BiRefNet demo](https://huggingface.co/spaces/ZhengPeng7/BiRefNet_demo). Model: Swin-V1-Large backbone, default config.*
+*Sample images from [BiRefNet demo](https://huggingface.co/spaces/ZhengPeng7/BiRefNet_demo).*
 
 ## Architecture
 
@@ -36,7 +38,7 @@ Depends on:
 
 ```bash
 # Run inference on an image (downloads model automatically from HuggingFace)
-cargo run --example inference --release -- --image your_image.jpg --size 384
+cargo run --example inference --release -- --image your_image.jpg --size 1024
 ```
 
 ### As a library
@@ -60,7 +62,13 @@ let outputs = model.forward(&input)?;
 
 ## Validation
 
-End-to-end inference output matches PyTorch BiRefNet within **6.87e-5** max absolute error (fp32 precision limit).
+End-to-end inference output matches PyTorch BiRefNet:
+- **384x384**: max error 6.87e-5
+- **1024x1024**: max error 1.63e-4
+
+## Note on candle-core Conv2d Bug
+
+This project uses a [patched candle-core](https://github.com/developer0hye/candle/tree/fix/conv2d-tiled-bug) that works around a `conv2d_tiled` bug ([huggingface/candle#3404](https://github.com/huggingface/candle/issues/3404)). The patch switches the default Conv2d implementation from `TiledIm2Col` to `FullIm2Col`. Once the upstream fix is merged, this project will switch back to the official candle release.
 
 ## Reference
 

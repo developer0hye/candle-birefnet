@@ -241,6 +241,7 @@ impl BiRefNet {
         let p4_up: Tensor = p4.upsample_bilinear2d(x3.dims()[2], x3.dims()[3], true)?;
         let p3: Tensor = (p4_up + self.lateral_block4.forward(&x3)?)?;
         let patches: Tensor = self.make_patches(x, &p3)?;
+        // Skip redundant upsample when patches already match target size
         let ipt_feat: Tensor = self.ipt_blk4.forward(&patches.upsample_bilinear2d(
             x3.dims()[2],
             x3.dims()[3],
@@ -287,6 +288,16 @@ impl BiRefNet {
         let p1_out: Tensor = self.conv_out1.forward(&p1)?;
 
         Ok(vec![p1_out])
+    }
+
+    /// Debug: access ipt_blk4 conv1 weight.
+    pub fn ipt_blk4_conv1_weight(&self) -> Result<Tensor> {
+        self.ipt_blk4.conv1_weight()
+    }
+
+    /// Debug: access ipt_blk4 conv_out weight.
+    pub fn ipt_blk4_conv_out_weight(&self) -> Result<Tensor> {
+        self.ipt_blk4.conv_out_weight()
     }
 
     /// Split input image into patches relative to a reference feature map size.
