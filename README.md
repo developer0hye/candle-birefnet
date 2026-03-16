@@ -21,8 +21,8 @@ Model: Swin-V1-Large backbone, default config.
 
 | PyTorch | Candle (Rust) |
 |---------|---------------|
-| ![PyTorch](examples/helicopter_result_pytorch.png) | ![Candle](examples/helicopter_result_candle.png) |
-| ![PyTorch](examples/windmill_result_pytorch.png) | ![Candle](examples/windmill_result_candle.png) |
+| ![PyTorch](examples/helicopter_result_pytorch_384.png) | ![Candle](examples/helicopter_result_candle_384.png) |
+| ![PyTorch](examples/windmill_result_pytorch_384.png) | ![Candle](examples/windmill_result_candle_384.png) |
 
 *Sample images from [BiRefNet demo](https://huggingface.co/spaces/ZhengPeng7/BiRefNet_demo).*
 
