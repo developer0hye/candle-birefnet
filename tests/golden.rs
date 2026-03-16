@@ -90,8 +90,25 @@ fn golden_birefnet_full_inference() -> Result<()> {
     assert_eq!(outputs[0].dims(), &[1, 1, 384, 384]);
     assert_eq!(outputs[0].dims(), data["output"].dims());
 
-    println!("\nBiRefNet full inference error:");
+    println!("\nBiRefNet 384x384 inference error:");
     // Actual max error: ~6.87e-5 across full end-to-end inference
     assert_tensor_close(&outputs[0], &data["output"], 1e-3);
+    Ok(())
+}
+
+/// BiRefNet inference at 1024x1024 resolution.
+#[test]
+fn golden_birefnet_1024_inference() -> Result<()> {
+    let data = load_test_case("birefnet_1024");
+    let (_varmap, vb) = vb_from_params(&data);
+
+    let model = candle_birefnet::BiRefNet::new(vb)?;
+    let outputs = model.forward(&data["input"])?;
+
+    assert_eq!(outputs.len(), 1);
+    assert_eq!(outputs[0].dims(), &[1, 1, 1024, 1024]);
+
+    println!("\nBiRefNet 1024x1024 inference error:");
+    assert_tensor_close(&outputs[0], &data["output"], 1e-2);
     Ok(())
 }

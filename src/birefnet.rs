@@ -21,7 +21,7 @@ use crate::decoder::{BasicDecBlk, BasicLatBlk, GradientAttention, SimpleConvs};
 /// `[B, C, H, W]` → `[B, C*grid_h*grid_w, H/grid_h, W/grid_w]`
 ///
 /// Equivalent to: `einops.rearrange(x, 'b c (hg h) (wg w) -> b (c hg wg) h w', hg=gh, wg=gw)`
-fn image2patches(x: &Tensor, grid_h: usize, grid_w: usize) -> Result<Tensor> {
+pub fn image2patches(x: &Tensor, grid_h: usize, grid_w: usize) -> Result<Tensor> {
     let (b, c, h, w) = x.dims4()?;
     let ph: usize = h / grid_h;
     let pw: usize = w / grid_w;
