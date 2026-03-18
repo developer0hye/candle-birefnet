@@ -1,7 +1,7 @@
 //! BiRefNet: Bilateral Reference Network for image segmentation.
 //!
-//! Inference-only implementation targeting the default config:
-//! - Backbone: Swin-V1-Large
+//! Inference-only implementation supporting configurable Swin backbone:
+//! - Backbone: Swin-V1-Large (default) or Swin-V1-Tiny (lite)
 //! - Multi-scale input: cat mode
 //! - Decoder attention: ASPPDeformable
 //! - Squeeze block: BasicDecBlk x1
@@ -61,13 +61,28 @@ pub struct BiRefNet {
 impl BiRefNet {
     /// Create BiRefNet with the default Swin-V1-Large backbone configuration.
     pub fn new(vb: VarBuilder) -> Result<Self> {
-        let swin_config: SwinTransformerConfig = SwinTransformerConfig::large();
+        Self::from_config(SwinTransformerConfig::large(), vb)
+    }
+
+    /// Create BiRefNet with Swin-V1-Tiny backbone (lite variant, ~89 MB FP16).
+    pub fn new_lite(vb: VarBuilder) -> Result<Self> {
+        Self::from_config(SwinTransformerConfig::tiny(), vb)
+    }
+
+    /// Create BiRefNet with an arbitrary Swin backbone configuration.
+    ///
+    /// Channel dimensions are derived from `swin_config.embed_dim` (E):
+    /// - Backbone stages output: [E, 2E, 4E, 8E]
+    /// - After cat mode (half-res concat): [2E, 4E, 8E, 16E]
+    pub fn from_config(swin_config: SwinTransformerConfig, vb: VarBuilder) -> Result<Self> {
         let bb: SwinTransformer = SwinTransformer::new(&swin_config, vb.pp("bb"))?;
 
-        // channels after mul_scl_ipt='cat': [3072, 1536, 768, 384]
-        let channels: [usize; 4] = [3072, 1536, 768, 384];
-        // cxt = [384, 768, 1536] (last 3 of channels reversed, cxt_num=3)
-        let cxt_sum: usize = 384 + 768 + 1536; // 2688
+        let e: usize = swin_config.embed_dim;
+
+        // channels after mul_scl_ipt='cat': [16E, 8E, 4E, 2E]
+        let channels: [usize; 4] = [16 * e, 8 * e, 4 * e, 2 * e];
+        // cxt = channels[1..4] (cxt_num=3)
+        let cxt_sum: usize = channels[1] + channels[2] + channels[3]; // 14E
 
         // Squeeze: BasicDecBlk(channels[0]+cxt_sum, channels[0])
         let squeeze_module = BasicDecBlk::new(

@@ -112,15 +112,26 @@ fn main() -> Result<()> {
     let res: u32 = res_str.parse().unwrap_or(1024);
     let size: (u32, u32) = (res, res);
 
+    let is_lite = args.iter().any(|a| a == "--lite");
+
     // Download model from HuggingFace
-    println!("Loading model from HuggingFace...");
+    let model_id = if is_lite {
+        "ZhengPeng7/BiRefNet_lite"
+    } else {
+        "ZhengPeng7/BiRefNet"
+    };
+    println!("Loading model from HuggingFace ({model_id})...");
     let api = hf_hub::api::sync::Api::new()?;
-    let repo = api.model("ZhengPeng7/BiRefNet".to_string());
+    let repo = api.model(model_id.to_string());
     let model_path = repo.get("model.safetensors")?;
 
     let device = &Device::Cpu;
     let vb = unsafe { VarBuilder::from_mmaped_safetensors(&[model_path], DType::F32, device)? };
-    let model = BiRefNet::new(vb)?;
+    let model = if is_lite {
+        BiRefNet::new_lite(vb)?
+    } else {
+        BiRefNet::new(vb)?
+    };
 
     // Preprocess
     println!("Processing: {image_path} at {}x{}", size.0, size.1);
@@ -141,11 +152,12 @@ fn main() -> Result<()> {
         .unwrap()
         .to_lowercase();
 
-    let mask_path = format!("examples/{stem}_mask_candle.png");
+    let variant = if is_lite { "_lite" } else { "" };
+    let mask_path = format!("examples/{stem}_mask_candle{variant}_{res_str}.png");
     mask_img.save(&mask_path)?;
     println!("Mask saved: {mask_path}");
 
-    let result_path = format!("examples/{stem}_result_candle.png");
+    let result_path = format!("examples/{stem}_result_candle{variant}_{res_str}.png");
     create_comparison(&input_img, &mask_img, &result_path)?;
 
     println!("Done!");

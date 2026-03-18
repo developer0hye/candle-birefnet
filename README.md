@@ -4,31 +4,58 @@
 
 Pure Rust, no custom kernels — works on all Candle backends (CPU, CUDA, Metal, WASM).
 
+## Supported Models
+
+| Model | Backbone | Weights | Constructor |
+|-------|----------|---------|-------------|
+| [BiRefNet](https://huggingface.co/ZhengPeng7/BiRefNet) | Swin-V1-Large | 444 MB (FP16) | `BiRefNet::new(vb)` |
+| [BiRefNet_lite](https://huggingface.co/ZhengPeng7/BiRefNet_lite) | Swin-V1-Tiny | 178 MB (FP32) / 85 MB (FP16) | `BiRefNet::new_lite(vb)` |
+
 ## Results
 
-PyTorch (left) vs **Candle/Rust** (right) using [`ZhengPeng7/BiRefNet`](https://huggingface.co/ZhengPeng7/BiRefNet) pretrained weights. Each panel shows: Input | Segmentation Mask | Composite.
+PyTorch (left) vs **Candle/Rust** (right). Each panel shows: Input | Segmentation Mask | Composite.
 
-Model: Swin-V1-Large backbone, default config.
+*Sample images from [BiRefNet demo](https://huggingface.co/spaces/ZhengPeng7/BiRefNet_demo).*
 
-### 1024x1024
+### BiRefNet (Swin-V1-Large)
+
+Using [`ZhengPeng7/BiRefNet`](https://huggingface.co/ZhengPeng7/BiRefNet) pretrained weights.
+
+#### 1024x1024
 
 | PyTorch | Candle (Rust) |
 |---------|---------------|
 | ![PyTorch](examples/helicopter_result_pytorch_1024.png) | ![Candle](examples/helicopter_result_candle_1024.png) |
 | ![PyTorch](examples/windmill_result_pytorch_1024.png) | ![Candle](examples/windmill_result_candle_1024.png) |
 
-### 384x384
+#### 384x384
 
 | PyTorch | Candle (Rust) |
 |---------|---------------|
 | ![PyTorch](examples/helicopter_result_pytorch_384.png) | ![Candle](examples/helicopter_result_candle_384.png) |
 | ![PyTorch](examples/windmill_result_pytorch_384.png) | ![Candle](examples/windmill_result_candle_384.png) |
 
-*Sample images from [BiRefNet demo](https://huggingface.co/spaces/ZhengPeng7/BiRefNet_demo).*
+### BiRefNet_lite (Swin-V1-Tiny)
+
+Using [`ZhengPeng7/BiRefNet_lite`](https://huggingface.co/ZhengPeng7/BiRefNet_lite) pretrained weights.
+
+#### 1024x1024
+
+| PyTorch | Candle (Rust) |
+|---------|---------------|
+| ![PyTorch](examples/helicopter_result_pytorch_lite_1024.png) | ![Candle](examples/helicopter_result_candle_lite_1024.png) |
+| ![PyTorch](examples/windmill_result_pytorch_lite_1024.png) | ![Candle](examples/windmill_result_candle_lite_1024.png) |
+
+#### 384x384
+
+| PyTorch | Candle (Rust) |
+|---------|---------------|
+| ![PyTorch](examples/helicopter_result_pytorch_lite_384.png) | ![Candle](examples/helicopter_result_candle_lite_384.png) |
+| ![PyTorch](examples/windmill_result_pytorch_lite_384.png) | ![Candle](examples/windmill_result_candle_lite_384.png) |
 
 ## Architecture
 
-Default configuration: Swin-V1-Large backbone + ASPPDeformable decoder.
+Configurable Swin-V1 backbone + ASPPDeformable decoder.
 
 Depends on:
 - [candle-swin](https://github.com/developer0hye/candle-swin) — Swin Transformer V1 backbone
@@ -37,8 +64,11 @@ Depends on:
 ## Quick Start
 
 ```bash
-# Run inference on an image (downloads model automatically from HuggingFace)
+# BiRefNet (Swin-V1-Large, default)
 cargo run --example inference --release -- --image your_image.jpg --size 1024
+
+# BiRefNet_lite (Swin-V1-Tiny, smaller & faster)
+cargo run --example inference --release -- --image your_image.jpg --size 1024 --lite
 ```
 
 ### As a library
@@ -53,7 +83,11 @@ let vb = unsafe {
     VarBuilder::from_mmaped_safetensors(&["model.safetensors"], DType::F32, device)?
 };
 
+// Swin-V1-Large (default)
 let model = BiRefNet::new(vb)?;
+
+// Or Swin-V1-Tiny (lite)
+// let model = BiRefNet::new_lite(vb)?;
 
 // Input: [B, 3, H, W] ImageNet-normalized RGB tensor
 let outputs = model.forward(&input)?;
@@ -63,8 +97,12 @@ let outputs = model.forward(&input)?;
 ## Validation
 
 End-to-end inference output matches PyTorch BiRefNet:
-- **384x384**: max error 6.87e-5
-- **1024x1024**: max error 1.63e-4
+
+| Model | Resolution | Max Error |
+|-------|-----------|-----------|
+| BiRefNet (Swin-L) | 384x384 | 6.87e-5 |
+| BiRefNet (Swin-L) | 1024x1024 | 1.63e-4 |
+| BiRefNet_lite (Swin-T) | 384x384 | 5.15e-5 |
 
 ## Note on candle-core Conv2d Bug
 
