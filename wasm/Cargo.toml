@@ -1,0 +1,28 @@
+[package]
+name = "bgremover-wasm"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+candle-birefnet = { path = ".." }
+candle-core = { git = "https://github.com/developer0hye/candle.git", branch = "fix/conv2d-tiled-bug", default-features = false }
+candle-nn = { git = "https://github.com/developer0hye/candle.git", branch = "fix/conv2d-tiled-bug" }
+safetensors = "0.5"
+wasm-bindgen = "0.2"
+console_error_panic_hook = "0.1"
+js-sys = "0.3"
+getrandom = { version = "0.3", features = ["wasm_js"] }
+
+[patch.crates-io]
+candle-core = { git = "https://github.com/developer0hye/candle.git", branch = "fix/conv2d-tiled-bug" }
+candle-nn = { git = "https://github.com/developer0hye/candle.git", branch = "fix/conv2d-tiled-bug" }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[profile.release]
+lto = true
+opt-level = 3

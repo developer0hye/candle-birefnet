@@ -9,7 +9,9 @@ Pure Rust, no custom kernels — works on all Candle backends (CPU, CUDA, Metal,
 | Model | Backbone | Weights | Constructor |
 |-------|----------|---------|-------------|
 | [BiRefNet](https://huggingface.co/ZhengPeng7/BiRefNet) | Swin-V1-Large | 444 MB (FP16) | `BiRefNet::new(vb)` |
-| [BiRefNet_lite](https://huggingface.co/ZhengPeng7/BiRefNet_lite) | Swin-V1-Tiny | 178 MB (FP32) / 85 MB (FP16) | `BiRefNet::new_lite(vb)` |
+| [BiRefNet_lite](https://huggingface.co/ZhengPeng7/BiRefNet_lite) | Swin-V1-Tiny | 178 MB (FP32) / 85 MB (FP16) / **43 MB (INT8)** | `BiRefNet::new_lite(vb)` |
+
+INT8 weights use PyTorch Post-Training Quantization with DUTS-TE calibration. See [INT8 Quantization Guide](docs/INT8_QUANTIZATION.md) for details.
 
 ## Results
 
@@ -52,6 +54,23 @@ Using [`ZhengPeng7/BiRefNet_lite`](https://huggingface.co/ZhengPeng7/BiRefNet_li
 |---------|---------------|
 | ![PyTorch](examples/helicopter_result_pytorch_lite_384.png) | ![Candle](examples/helicopter_result_candle_lite_384.png) |
 | ![PyTorch](examples/windmill_result_pytorch_lite_384.png) | ![Candle](examples/windmill_result_candle_lite_384.png) |
+
+### BiRefNet_lite INT8 (Quantized, 43 MB)
+
+FP32 (top) vs **INT8 dequantized** (bottom) at 512x512. Each panel shows: Input | Segmentation Mask | Composite.
+
+| FP32 | INT8 |
+|------|------|
+| ![FP32](examples/helicopter_result_candle_lite_512.png) | ![INT8](examples/helicopter_result_int8_512.png) |
+| ![FP32](examples/windmill_result_candle_lite_512.png) | ![INT8](examples/windmill_result_int8_512.png) |
+
+FP32 vs INT8 difference (amplified 10x):
+
+| Helicopter | Windmill |
+|------------|----------|
+| ![Helicopter](examples/helicopter_fp16_vs_int8_comparison.png) | ![Windmill](examples/windmill_fp16_vs_int8_comparison.png) |
+
+*Comparison panels: Input \| FP32 Mask \| INT8 Mask \| Diff(10x) \| FP32 Composite \| INT8 Composite*
 
 ## Architecture
 
@@ -98,11 +117,14 @@ let outputs = model.forward(&input)?;
 
 End-to-end inference output matches PyTorch BiRefNet:
 
-| Model | Resolution | Max Error |
-|-------|-----------|-----------|
-| BiRefNet (Swin-L) | 384x384 | 6.87e-5 |
-| BiRefNet (Swin-L) | 1024x1024 | 1.63e-4 |
-| BiRefNet_lite (Swin-T) | 384x384 | 5.15e-5 |
+| Model | Format | Resolution | Max Error | Mean Error | IoU vs FP32 |
+|-------|--------|-----------|-----------|------------|-------------|
+| BiRefNet (Swin-L) | FP32 | 384x384 | 6.87e-5 | — | — |
+| BiRefNet (Swin-L) | FP32 | 1024x1024 | 1.63e-4 | — | — |
+| BiRefNet_lite (Swin-T) | FP32 | 384x384 | 5.15e-5 | — | — |
+| BiRefNet_lite (Swin-T) | **INT8 PTQ** | 512x512 | 2.04e-1 | 3.75e-4 | **0.9986** |
+
+INT8 quantized with [DUTS-TE](https://saliencydetection.net/duts/) calibration (500 images). See [INT8 Quantization Guide](docs/INT8_QUANTIZATION.md).
 
 ## Note on candle-core Conv2d Bug
 
