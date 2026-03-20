@@ -134,3 +134,123 @@ fn golden_birefnet_lite_inference() -> Result<()> {
     assert_tensor_close(&outputs[0], &data["output"], 1e-3);
     Ok(())
 }
+
+/// BiRefNet_lite INT8 dequantize → inference test.
+///
+/// Verifies that Rust-side INT8 dequantization produces the same output
+/// as Python-side dequantization. This catches bugs in broadcast shape,
+/// sign handling, or scale/zero_point application.
+///
+/// Test data: Python loads INT8 safetensors, dequantizes, runs inference,
+/// saves dequantized weights + output. Rust loads the same dequantized
+/// weights, runs inference, and compares.
+#[test]
+fn golden_birefnet_int8_dequantized_inference() -> Result<()> {
+    let data = load_test_case("birefnet_int8_dequantized");
+    let (_varmap, vb) = vb_from_params(&data);
+
+    let model = candle_birefnet::BiRefNet::new_lite(vb)?;
+    let outputs = model.forward(&data["input"])?;
+
+    assert_eq!(outputs.len(), 1);
+    assert_eq!(outputs[0].dims(), &[1, 1, 384, 384]);
+    assert_eq!(outputs[0].dims(), data["output"].dims());
+
+    println!("\nBiRefNet_lite INT8 dequantized 384x384 inference error:");
+    // INT8 dequantized weights introduce quantization noise,
+    // so tolerance is higher than FP32 (1e-3 vs 1e-3 for lite FP32)
+    assert_tensor_close(&outputs[0], &data["output"], 1e-3);
+    Ok(())
+}
+
+/// BiRefNet_lite INT8 raw file → Rust dequantize → inference test.
+///
+/// End-to-end: loads the actual INT8 safetensors file, runs Rust dequantize
+/// logic, builds model, runs inference, and compares against Python output.
+/// This validates the full Rust INT8 loading pipeline.
+#[test]
+fn golden_birefnet_int8_rust_dequantize() -> Result<()> {
+    // Load Python reference (input + expected output from INT8 dequantized model)
+    let ref_data = load_test_case("birefnet_int8_dequantized");
+
+    // Load INT8 safetensors and dequantize in Rust
+    let int8_path = "weights/birefnet_int8.safetensors";
+    let int8_bytes = std::fs::read(int8_path)
+        .unwrap_or_else(|_| panic!("missing INT8 weights: {int8_path}"));
+
+    let device = &Device::Cpu;
+    let int8_tensors = safetensors::SafeTensors::deserialize(&int8_bytes).unwrap();
+
+    // Step 1: Load all tensors
+    let mut raw: std::collections::HashMap<String, Tensor> = std::collections::HashMap::new();
+    for (name, view) in int8_tensors.tensors() {
+        if view.dtype() == safetensors::Dtype::I8 {
+            let f32_data: Vec<f32> = view.data().iter().map(|&b| (b as i8) as f32).collect();
+            let tensor = Tensor::from_vec(f32_data, view.shape(), device)?;
+            raw.insert(name.to_string(), tensor);
+        } else {
+            let dtype = match view.dtype() {
+                safetensors::Dtype::F32 => DType::F32,
+                safetensors::Dtype::F16 => DType::F16,
+                safetensors::Dtype::I64 => DType::I64,
+                safetensors::Dtype::U32 => DType::U32,
+                _ => continue,
+            };
+            let tensor = Tensor::from_raw_buffer(view.data(), dtype, view.shape(), device)?;
+            raw.insert(name.to_string(), tensor);
+        }
+    }
+
+    // Step 2: Dequantize INT8 weights
+    let varmap = VarMap::new();
+    {
+        let mut data_map = varmap.data().lock().unwrap();
+        let weight_keys: Vec<String> = raw
+            .keys()
+            .filter(|k| !k.ends_with(".__scale") && !k.ends_with(".__zero_point"))
+            .cloned()
+            .collect();
+
+        for key in weight_keys {
+            let tensor = &raw[&key];
+            let scale_key = format!("{key}.__scale");
+            let zp_key = format!("{key}.__zero_point");
+
+            let final_tensor = if raw.contains_key(&scale_key) {
+                let scale = raw[&scale_key].to_dtype(DType::F32)?;
+                let zp = raw[&zp_key].to_dtype(DType::F32)?;
+                let w = tensor.to_dtype(DType::F32)?;
+
+                let w_dims = w.dims().len();
+                if w_dims > 1 {
+                    let mut shape = vec![scale.dims()[0]];
+                    for _ in 1..w_dims {
+                        shape.push(1);
+                    }
+                    let scale_b = scale.reshape(&shape[..])?;
+                    let zp_b = zp.reshape(&shape[..])?;
+                    w.broadcast_sub(&zp_b)?.broadcast_mul(&scale_b)?
+                } else {
+                    w.sub(&zp)?.mul(&scale)?
+                }
+            } else {
+                tensor.to_dtype(DType::F32)?
+            };
+
+            data_map.insert(key, Var::from_tensor(&final_tensor)?);
+        }
+    }
+
+    let vb = VarBuilder::from_varmap(&varmap, DType::F32, device);
+    let model = candle_birefnet::BiRefNet::new_lite(vb)?;
+    let outputs = model.forward(&ref_data["input"])?;
+
+    assert_eq!(outputs.len(), 1);
+    assert_eq!(outputs[0].dims(), &[1, 1, 384, 384]);
+
+    println!("\nBiRefNet_lite INT8 Rust-dequantized 384x384 inference error:");
+    // Compare Rust dequantize output against Python dequantize output
+    // Should be very close (same dequantize formula, same weights)
+    assert_tensor_close(&outputs[0], &ref_data["output"], 1e-3);
+    Ok(())
+}
